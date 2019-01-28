@@ -17,6 +17,8 @@ void SigHandler(int signo);
 
 int counter_usr1 = 0;
 int counter_usr2 = 0;
+int character = 0;
+char * receivedstr;
 
 int main(int argc, char* argv[]) {
 	pid_t PID;
@@ -56,12 +58,23 @@ int main(int argc, char* argv[]) {
 
 void SigHandler(int signo) {
 	if (signo == SIGUSR1) {
+		character = (charcter << 1);
 		++counter_usr1;
 	} else if (signo == SIGUSR2) {
+		character = (charcter << 1) + 1;
 		++counter_usr2;
 	} else {
 		printf("Undefined signal number!\n");
 		exit(1);
+	}
+	if (counter_usr1 + counter_usr2 == 8) {
+		counter_usr1 = 0;
+		counter_usr2 = 0;
+		strcat(receivedstr, character);
+		if(charcter == 0) {
+			printf("%s", receivedstr);
+		}
+		character = 0;
 	}
 	return;
 }
@@ -81,18 +94,15 @@ void sendMessage (pid_t pid, char * buffer) {
 	for(int i; buffer[i] != '\0'; i++) {
 		for(int j = 0; j < 8; j++) {
 			if(buffer[i] & (1 << j)) {
-			  kill(pid, SIGUSR1);
+				kill(pid, SIGUSR1);
 			} else {
 				kill(pid, SIGUSR2);
 			}
+			sleep(0.05);
 		}
 	}
 	for(int j = 0; j < 8; j++) {
-		if(buffer[i] & (1 << j)) {
-			kill(pid, SIGUSR1);
-		} else {
-			kill(pid, SIGUSR2);
-		}
+		kill(pid, SIGUSR1);
 	}
 	return;
 }
