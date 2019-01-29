@@ -1,13 +1,12 @@
+#define _XOPEN_SOURCE 500
 #include <sys/types.h>
 #include <signal.h>
-#include <bits/sigaction.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-#define _POSIX_SOURCE
 
 #ifdef SINGLE
 	const int MODE = 2;
@@ -75,7 +74,7 @@ void SigHandler(int signo) {
 	if (counter_usr1 + counter_usr2 == 8) {
 		counter_usr1 = 0;
 		counter_usr2 = 0;
-		itoa(character, chr, 10)
+		itoa(character, chr, 10);
 		strcat(receivedstr, chr);
 		if(character == 0) {
 			printf("%s", receivedstr);
