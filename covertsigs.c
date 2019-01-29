@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#define _POSIX_SOURCE
 
 #ifdef SINGLE
 	const int MODE = 2;
@@ -14,6 +15,9 @@
 
 #define BUFFER_SIZE 4096
 void SigHandler(int signo);
+int getLine (char** buffer, int size, FILE* stream);
+void sendMessage (pid_t pid, char * buffer);
+void installSigactions( int, struct sigaction* );
 
 int counter_usr1 = 0;
 int counter_usr2 = 0;
@@ -23,7 +27,7 @@ char * receivedstr;
 int main(int argc, char* argv[]) {
 	pid_t PID;
 	pid_t oPID;
-	int exit = 0;
+	int end = 0;
 	PID = getpid();
 	char selfBuffer[BUFFER_SIZE];
 	
@@ -33,7 +37,7 @@ int main(int argc, char* argv[]) {
 	act.sa_flags = 0;
 	
 	printf("Own PID: %d\n", PID);
-	scanf("%d", oPID);
+	scanf("%d", &oPID);
 	
 	if (sigaction(SIGUSR1, &act, NULL) < 0) {
 		printf("sigaction error!\n");
@@ -44,10 +48,10 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 		
-	while(!exit) {
-		if (getline(&selfBuffer, BUFFER_SIZE, stdin) > 0) {
+	while(!end) {
+		if (getLine(&selfBuffer, BUFFER_SIZE, stdin) > 0) {
 			sendMessage(oPID, selfBuffer);
-		)
+		}
 	}
 	
 	
@@ -57,11 +61,12 @@ int main(int argc, char* argv[]) {
 }
 
 void SigHandler(int signo) {
+	char chr[1];
 	if (signo == SIGUSR1) {
-		character = (charcter << 1);
+		character = (character << 1);
 		++counter_usr1;
 	} else if (signo == SIGUSR2) {
-		character = (charcter << 1) + 1;
+		character = (character << 1) + 1;
 		++counter_usr2;
 	} else {
 		printf("Undefined signal number!\n");
@@ -70,8 +75,9 @@ void SigHandler(int signo) {
 	if (counter_usr1 + counter_usr2 == 8) {
 		counter_usr1 = 0;
 		counter_usr2 = 0;
-		strcat(receivedstr, character);
-		if(charcter == 0) {
+		itoa(character, chr, 10)
+		strcat(receivedstr, chr);
+		if(character == 0) {
 			printf("%s", receivedstr);
 		}
 		character = 0;
@@ -84,7 +90,7 @@ int getLine (char** buffer, int size, FILE* stream){
   for(i = 0;i < size-1;i++){
   	char c = getc(stream);
   	if(c == '\n' || c == '\r') break;
-  	buffer[i] = c;
+  	buffer[i] = &c;
   }
   for (int j = i; j < size; j++) buffer[j] = '\0';
   return i;

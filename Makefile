@@ -1,9 +1,9 @@
 
-convertsigs.double:
-	gcc -Wall -std=c99 -o convertsigs convertsigs.c
+covertsigs.double:
+	gcc -g -Wall -std=c99 -o covertsigs covertsigs.c
 
-convertsigs.single: convertsigs.c
-	gcc -Wall -std=c99 -DSINGLE -o convertsigs convertsigs.c
+covertsigs.single: covertsigs.c
+	gcc -Wall -std=c99 -DSINGLE -o covertsigs covertsigs.c
 
 clean: 	
-	rm -f convertsigs
+	rm -f covertsigs
