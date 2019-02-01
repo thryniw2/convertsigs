@@ -60,10 +60,11 @@ int main(int argc, char* argv[]) {
 	}
 		
 	while(1) {
-		if (getLine(selfBuffer, BUFFER_SIZE) > 0) {
-			sendMessage(oPID, selfBuffer);
-		}
-		if (timeSet) {
+		if(!timeSet)
+			if (getLine(selfBuffer, BUFFER_SIZE) > 0) {
+				sendMessage(oPID, selfBuffer);
+			}	
+		} else {
 			printf("reciever ready\n");
 			sleep(0.05);
 			kill(oPID, SIGUSR1);
@@ -89,6 +90,7 @@ void waiting (long nsec){
 	}
 }
 
+
 void SigHandler(int signo) {
 	if (MODE == 2) {
 		if (signo == SIGUSR1) {
@@ -101,7 +103,6 @@ void SigHandler(int signo) {
 			printf("Undefined signal number!\n");
 			exit(1);
 		}
-		
 	} else if (MODE == 1) {
 		if (signo == SIGUSR1 && !sender_flag) {
 			if (timeSet && !zero) {
