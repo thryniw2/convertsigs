@@ -60,13 +60,16 @@ int main(int argc, char* argv[]) {
 	}
 		
 	while(1) {
-		if(!timeSet) {
+		if(!timeSet)
 			if (getLine(selfBuffer, BUFFER_SIZE) > 0) {
 				sendMessage(oPID, selfBuffer);
 			}	
 		} else {
+			printf("reciever ready\n");
+			sleep(0.05);
 			kill(oPID, SIGUSR1);
 			waiting(500000);
+			printf("Done waiting\n");
 			if(timeSet) {
 				zero = 1;
 			}
@@ -105,13 +108,16 @@ void SigHandler(int signo) {
 			if (timeSet && !zero) {
 				character = (character << 1) + 1;
 				++counter_usr1;
+				printf("Got 1\n");
 				kill(oPID, SIGUSR1);
 			} else if (timeSet && zero) {
 				character = (character << 1);
 				++counter_usr1;
 				zero = 0;
+				printf("Got 0\n");
 				kill(oPID, SIGUSR1);
 			} else {
+				printf("Set timeSet\n");
 				timeSet = 1;
 				return;
 			}
@@ -120,6 +126,7 @@ void SigHandler(int signo) {
 		}
 	}
 	if (counter_usr1 + counter_usr2 >= 8) {
+		printf("new letter\n");
 		counter_usr1 = 0;
 		counter_usr2 = 0;
 		receivedstr[letter++] = character;
