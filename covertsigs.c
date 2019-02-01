@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
 	}
 		
 	while(1) {
-		if(!timeSet)
+		if(!timeSet) {
 			if (getLine(selfBuffer, BUFFER_SIZE) > 0) {
 				sendMessage(oPID, selfBuffer);
 			}	
