@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
-#include <sys/time.h>
+#include <time.h>
 	
 #ifdef SINGLE
 	int MODE = 1;
@@ -20,20 +20,24 @@ void SigHandler(int signo);
 int getLine (char* buffer, int size);
 void sendMessage (pid_t pid, char * buffer);
 void installSigactions( int, struct sigaction* );
+void waiting (long nsec);
 
+pid_t oPID;
 int counter_usr1 = 0;
 int counter_usr2 = 0;
 int character = 0;
 int letter;
+int sender_flag = 0;
 int timeSet = 0;
-struct timeval start;
-struct timeval endtime;
+int receiverSet = 1;
+int zero = 0;
+struct timespec start;
+struct timespec endtime;
 char receivedstr [BUFFER_SIZE];
 
 int main(int argc, char* argv[]) {
 	pid_t PID;
-	pid_t oPID;
-	int end = 0;
+	//int end = 0;
 	PID = getpid();
 	char selfBuffer[BUFFER_SIZE];
 	
@@ -41,6 +45,7 @@ int main(int argc, char* argv[]) {
 	act.sa_handler = SigHandler;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
+	signal(SIGALRM, act.sa_handler);
 	
 	printf("Own PID: %d\n", PID);
 	scanf("%d", &oPID);
@@ -54,15 +59,34 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 		
-	while(!end) {
+	while(1) {
 		if (getLine(selfBuffer, BUFFER_SIZE) > 0) {
 			sendMessage(oPID, selfBuffer);
 		}
+		if (timeSet) {
+			printf("reciever ready\n");
+			sleep(0.05);
+			kill(oPID, SIGUSR1);
+			waiting(500000);
+			printf("Done waiting\n");
+			if(timeSet) {
+				zero = 1;
+			}
+			raise(SIGUSR1);
+		}
 	}
 	
-	printf("%d\n", oPID);
-	
 	return 0;
+}
+
+void waiting (long nsec){
+	clock_gettime(CLOCK_MONOTONIC, &start);
+	endtime.tv_nsec = start.tv_nsec + nsec;
+	while (start.tv_nsec < endtime.tv_nsec) {
+		//printf("%ld\n", endtime.tv_nsec - start.tv_nsec);
+		sleep(0.05);
+		clock_gettime(CLOCK_MONOTONIC, &start);
+	}
 }
 
 void SigHandler(int signo) {
@@ -79,30 +103,31 @@ void SigHandler(int signo) {
 		}
 		
 	} else if (MODE == 1) {
-	  gettimeofday(&endtime, NULL);
-		if (signo == SIGUSR1) {
-			printf("%ld, timeSet: %d\n", endtime.tv_usec - start.tv_usec, timeSet);
-			if(!timeSet){
-				timeSet = 1;
-				gettimeofday(&start, NULL);
-			} else if(endtime.tv_usec - start.tv_usec < 60 && timeSet) {
-				timeSet = 0;
-				printf("Got 1\n");
+		if (signo == SIGUSR1 && !sender_flag) {
+			if (timeSet && !zero) {
 				character = (character << 1) + 1;
 				++counter_usr1;
-			} else if (endtime.tv_usec - start.tv_usec >= 60 && timeSet) {
-			  timeSet = 0;
-			  printf("Got 0\n");
+				printf("Got 1\n");
+				kill(oPID, SIGUSR1);
+			} else if (timeSet && zero) {
 				character = (character << 1);
 				++counter_usr1;
+				zero = 0;
+				printf("Got 0\n");
+				kill(oPID, SIGUSR1);
+			} else {
+				printf("Set timeSet\n");
+				timeSet = 1;
+				return;
 			}
-		}	
-		
+		} else if (signo == SIGUSR1 && sender_flag) {
+			receiverSet = 0;
+		}
 	}
-	if (counter_usr1 + counter_usr2 == 8) {
+	if (counter_usr1 + counter_usr2 >= 8) {
+		printf("new letter\n");
 		counter_usr1 = 0;
 		counter_usr2 = 0;
-		printf("letter at: %d\n", letter);
 		receivedstr[letter++] = character;
 		
 		if(character == 0) {
@@ -130,8 +155,13 @@ int getLine (char* buffer, int size){
 }
 
 void sendMessage (pid_t pid, char * buffer) {
-	for(int i = 0; buffer[i] != '\0'; i++) {
-		printf("current letter: %c\n", buffer[i]); 
+	if (MODE == 1) {
+		printf("sender change\n");
+		sender_flag = 1;
+		kill(pid, SIGUSR1);		//Start single signal message
+		sleep(0.01);
+	}
+	for(int i = 0; buffer[i] != '\0'; i++) { 
 		for(int j = 0; j < 8; j++) {
 			if(MODE == 2){
 				if(buffer[i] & (1 << (7-j))) {
@@ -142,29 +172,33 @@ void sendMessage (pid_t pid, char * buffer) {
 	
 			} else {
 				if(buffer[i] & (1 << (7-j))) {
-					kill(pid, SIGUSR1);
-					sleep(0.05);
-					kill(pid, SIGUSR1);
+					while(receiverSet){ sleep(0.01); }
+					receiverSet = 1;
 					printf("Sent 1\n");
+					sleep(0.01);
+					kill(pid, SIGUSR1);		//sending 1
 				} else {
-					kill(pid, SIGUSR1);
-					sleep(0.5);
-					kill(pid, SIGUSR1);
-					printf("Sent 0\n");
+					while(receiverSet){ sleep(0.01); }
+					receiverSet = 1;
+					printf("Sent 0\n");		//sending 0
 				}
+				sleep(0.01);
 			}
-			sleep(0.05);
+			
+		}
+		if (MODE == 1 && buffer[i] == 0) {
+			kill(pid, SIGUSR1);	//end of letter.
 		}
 	}
 	for(int j = 0; j < 8; j++) {
 		if (MODE == 2) {
 			kill(pid, SIGUSR2);
+			sleep(0.05);
 		} else {
-			kill(pid, SIGUSR1);
-			sleep(0.2);
-			kill(pid, SIGUSR1);
+			while(timeSet){ sleep(0.01); }//long wait to symbolize message end.
+			timeSet = 1;
 		}
-		sleep(0.05);
 	}
+	sender_flag = 0;
 	return;
 }
